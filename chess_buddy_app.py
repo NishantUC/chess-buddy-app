@@ -107,3 +107,24 @@ if st.button("Analyze PGN"):
 
     except Exception as e:
         st.exception(f"Unexpected error during PGN analysis: {e}")
+
+# === Comparison Block ===
+st.markdown("---")
+with st.expander("🤔 How is Chess Buddy different from Chess.com engine analysis?"):
+    st.markdown("""
+| Feature                         | Chess.com Engine Analysis              | Chess Buddy 🚀 |
+|----------------------------------|----------------------------------------|----------------|
+| **Goal**                        | Tell you the best move                 | Help you improve over time |
+| **Focus**                       | One game at a time                     | Patterns across many games |
+| **Feedback Style**              | “Blunder! Play this.”                  | “You often miss forks in this opening.” |
+| **Opening Advice**              | Basic labels (Sicilian, etc.)          | Win rates, ECO codes, & training suggestions |
+| **Personalization**             | Minimal                                | Tracks your style & weaknesses |
+| **Data Source**                 | Games only from your Chess.com account | Any PGN file (Chess.com, Lichess, OTB, etc.) |
+| **Training Suggestions**        | None                                   | Recommends tactics, videos, or courses |
+| **Explainability**             | Engine evals (“+1.5”)                  | Plain English insights |
+| **Extensibility**              | Locked to Chess.com                    | Modular & open for features like coach chat |
+
+💡 **In short:**  
+*Chess.com tells you what happened.  
+Chess Buddy helps you fix it for next time.* 🎯
+    """, unsafe_allow_html=True)

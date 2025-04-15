@@ -59,11 +59,21 @@ if st.button("Analyze PGN"):
         st.markdown(f"**Result:** {result}")
         st.markdown(f"**Opening:** {opening}")
 
-        # Show first few moves
+        # Safely preview first 10 moves
         board = pgn_game.board()
         moves = list(pgn_game.mainline_moves())
-        move_preview = ' '.join([board.san(m) for m in moves[:10]])
-        st.markdown(f"**First 10 Moves:** {move_preview}")
+        move_preview = []
+
+        for i, move in enumerate(moves[:10]):
+            try:
+                san_move = board.san(move)
+                move_preview.append(san_move)
+                board.push(move)
+            except Exception:
+                move_preview.append(f"[Invalid move {i+1}]")
+                break
+
+        st.markdown(f"**First 10 Moves:** {' '.join(move_preview)}")
 
     except Exception as e:
         st.exception(f"Unexpected error during PGN analysis: {e}")

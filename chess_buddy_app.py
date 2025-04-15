@@ -25,6 +25,41 @@ def detect_eco_opening(san_moves):
             return eco, name
     return None, None
 
+# === Simple Tactical Check ===
+def detect_tactical_events(game):
+    board = game.board()
+    events = []
+    move_number = 1
+    turn = "White"
+    prev_piece_map = board.piece_map()
+
+    for move in game.mainline_moves():
+        san = board.san(move)
+        board.push(move)
+        piece_map = board.piece_map()
+
+        # Check for hanging pieces (own pieces attacked and undefended)
+        for square, piece in piece_map.items():
+            attackers = board.attackers(not piece.color, square)
+            defenders = board.attackers(piece.color, square)
+            if attackers and not defenders:
+                events.append(f"❌ Move {move_number} ({turn}): {piece.symbol()} on {chess.square_name(square)} is hanging.")
+
+        # Check for missed capture (opponent had piece hanging last move)
+        for square, piece in prev_piece_map.items():
+            if square not in piece_map:
+                # piece was captured or moved
+                continue
+            attackers = board.attackers(not piece.color, square)
+            if attackers and not board.is_attacked_by(piece.color, square):
+                events.append(f"⚠️ Missed capture: {piece.symbol()} on {chess.square_name(square)} was hanging on last move.")
+
+        prev_piece_map = board.piece_map()
+        move_number += 0.5
+        turn = "Black" if turn == "White" else "White"
+
+    return events
+
 # === Instructions and UI ===
 with st.expander("📖 How to Get Your PGN"):
     st.markdown("""
@@ -43,17 +78,11 @@ st.markdown("---")
 
 # === PGN Upload Section ===
 st.subheader("📝 Paste PGN or Upload File")
-
-# Option 1: Paste PGN manually
 pgn_input = st.text_area("Paste your PGN here", height=200)
-
-# Option 2: Upload a PGN file
 uploaded_file = st.file_uploader("Or upload a .pgn file", type=["pgn"])
 
-# === PGN Analyzer Button ===
 if st.button("Analyze PGN"):
     try:
-        # Read PGN from input or uploaded file
         if uploaded_file is not None:
             stringio = io.StringIO(uploaded_file.getvalue().decode("utf-8"))
             pgn_game = chess.pgn.read_game(stringio)
@@ -68,7 +97,6 @@ if st.button("Analyze PGN"):
             st.error("❌ Failed to parse PGN. Make sure it includes full move list.")
             st.stop()
 
-        # === Extract Info from PGN ===
         white = pgn_game.headers.get("White", "?")
         black = pgn_game.headers.get("Black", "?")
         result = pgn_game.headers.get("Result", "?")
@@ -78,7 +106,6 @@ if st.button("Analyze PGN"):
         st.markdown(f"**Players:** {white} vs {black}")
         st.markdown(f"**Result:** {result}")
 
-        # Safely preview first 10 moves
         board = pgn_game.board()
         moves = list(pgn_game.mainline_moves())
         san_moves = []
@@ -94,7 +121,6 @@ if st.button("Analyze PGN"):
                 preview_moves.append(f"[Invalid move {i+1}]")
                 break
 
-        # Determine opening
         eco_code, opening_name = detect_eco_opening(san_moves[:6])
         if opening_from_header:
             st.markdown(f"**Opening:** {opening_from_header}")
@@ -104,6 +130,16 @@ if st.button("Analyze PGN"):
             st.markdown("**Opening:** Unknown")
 
         st.markdown(f"**First 10 Moves:** {' '.join(preview_moves)}")
+
+        # === New: Tactical Event Detector ===
+        st.markdown("---")
+        st.subheader("🚨 Tactical Blunders & Misses")
+        events = detect_tactical_events(pgn_game)
+        if events:
+            for e in events:
+                st.write(e)
+        else:
+            st.info("No obvious tactical blunders or missed opportunities found.")
 
     except Exception as e:
         st.exception(f"Unexpected error during PGN analysis: {e}")

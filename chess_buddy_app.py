@@ -16,8 +16,11 @@ if st.button("Analyze My Last 20 Games"):
         archive_url = f"https://api.chess.com/pub/player/{username.lower()}/games/archives"
         response = requests.get(archive_url)
 
+        # 👇 Enhanced error reporting
         if response.status_code != 200:
-            st.error(f"❌ Could not fetch archives for user '{username}'. Username may be wrong or games are private.")
+            st.error(f"❌ Failed to fetch archives for '{username}'.")
+            st.write(f"Status Code: {response.status_code}")
+            st.write(f"Response Text: {response.text}")
             st.stop()
 
         archives = response.json().get("archives", [])

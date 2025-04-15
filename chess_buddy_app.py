@@ -18,6 +18,20 @@ ECO_OPENINGS = {
     "d4 d5 Nf3 Nf6": ("D02", "Queen's Pawn Game"),
 }
 
+PIECE_NAMES = {
+    'p': 'Pawn', 'n': 'Knight', 'b': 'Bishop',
+    'r': 'Rook', 'q': 'Queen', 'k': 'King'
+}
+
+BLUNDER_LEVEL = {
+    'p': '🟢 Minor',
+    'n': '⚠️ Medium',
+    'b': '⚠️ Medium',
+    'r': '🔥 Critical',
+    'q': '🔥 Critical',
+    'k': '💀 King???'  # Shouldn't happen
+}
+
 def detect_eco_opening(san_moves):
     move_seq = ' '.join(san_moves)
     for pattern, (eco, name) in ECO_OPENINGS.items():
@@ -25,7 +39,12 @@ def detect_eco_opening(san_moves):
             return eco, name
     return None, None
 
-# === Simple Tactical Check ===
+def format_piece(piece, square):
+    symbol = piece.symbol().lower()
+    name = PIECE_NAMES.get(symbol, "Piece")
+    level = BLUNDER_LEVEL.get(symbol, "❓")
+    return f"{level} {name} on {chess.square_name(square)}"
+
 def detect_tactical_events(game):
     board = game.board()
     events = []
@@ -34,25 +53,25 @@ def detect_tactical_events(game):
     prev_piece_map = board.piece_map()
 
     for move in game.mainline_moves():
-        san = board.san(move)
         board.push(move)
         piece_map = board.piece_map()
 
-        # Check for hanging pieces (own pieces attacked and undefended)
+        # Check for hanging pieces (undefended after move)
         for square, piece in piece_map.items():
             attackers = board.attackers(not piece.color, square)
             defenders = board.attackers(piece.color, square)
             if attackers and not defenders:
-                events.append(f"❌ Move {move_number} ({turn}): {piece.symbol()} on {chess.square_name(square)} is hanging.")
+                piece_info = format_piece(piece, square)
+                events.append(f"{piece_info} is hanging and undefended on move {int(move_number)} ({turn}).")
 
-        # Check for missed capture (opponent had piece hanging last move)
+        # Missed capture logic
         for square, piece in prev_piece_map.items():
             if square not in piece_map:
-                # piece was captured or moved
                 continue
             attackers = board.attackers(not piece.color, square)
             if attackers and not board.is_attacked_by(piece.color, square):
-                events.append(f"⚠️ Missed capture: {piece.symbol()} on {chess.square_name(square)} was hanging on last move.")
+                piece_info = format_piece(piece, square)
+                events.append(f"⚠️ Missed capture: {piece_info} was left hanging on move {int(move_number)}.")
 
         prev_piece_map = board.piece_map()
         move_number += 0.5
@@ -60,7 +79,7 @@ def detect_tactical_events(game):
 
     return events
 
-# === Instructions and UI ===
+# === UI ===
 with st.expander("📖 How to Get Your PGN"):
     st.markdown("""
     PGN (Portable Game Notation) is the format for recording chess games.
@@ -76,7 +95,7 @@ with st.expander("📖 How to Get Your PGN"):
 
 st.markdown("---")
 
-# === PGN Upload Section ===
+# === Upload Section ===
 st.subheader("📝 Paste PGN or Upload File")
 pgn_input = st.text_area("Paste your PGN here", height=200)
 uploaded_file = st.file_uploader("Or upload a .pgn file", type=["pgn"])
@@ -131,7 +150,7 @@ if st.button("Analyze PGN"):
 
         st.markdown(f"**First 10 Moves:** {' '.join(preview_moves)}")
 
-        # === New: Tactical Event Detector ===
+        # === Tactical Analyzer v2 ===
         st.markdown("---")
         st.subheader("🚨 Tactical Blunders & Misses")
         events = detect_tactical_events(pgn_game)
